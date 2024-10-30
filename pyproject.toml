@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "telegram-cloudpayments-polling"
+version = "0.1.0"
+description = ""
+authors = ["BuildTools <unconfigured@null.spigotmc.org>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+python-dotenv = "^1.0.1"
+aiogram = "2.25"
+pydantic = "^2.9.2"
+requests = "^2.32.3"
+loguru = "^0.7.2"
+httpx = "^0.27.2"
+pydantic-settings = "^2.5.2"
+ngrok = "^1.4.0"
+uvicorn = "^0.32.0"
+fastapi = "0.100.0"
+peewee = "^3.17"
+psycopg2 = "^2.9.10"
+postgres = "^4.0"
+
+tsni yrteop
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
