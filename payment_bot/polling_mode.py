@@ -5,9 +5,15 @@ from cloud_payments import cloud_payments, models
 from cloud_payments.models import Order
 from db_infra import db
 
+# Запускаем бота
 bot = Bot(token=settings.tg_token)
 dp = Dispatcher(bot)
+
+# Создаем клиента для CloudPayments
 client = cloud_payments.CloudPayments(settings.cp_p_id, settings.cp_api_pass)
+
+# Создаем бд
+db.create_tables(db.db, db.Orders)
 
 
 @dp.message_handler(commands=['start'])
@@ -17,11 +23,14 @@ async def send_welcome(message: types.Message):
 
 
 @dp.message_handler(commands=["get_payment"])
-async def get_payment_link(message: types.Message):
+async def get_payment_link(message: types.Message) -> None:
     try:
         # Сюда нужно передавать сумму из сообщения
         order = await client.create_order_link(10.0, 'USD', message.from_id)
         await message.answer(f'Your order link: {order.url}')
+
+        # Создаем платеж в базе
+        await db.add_order(order)
 
         # Запускаем polling-проверку статуса платежа
         await check_order_status(order)
@@ -29,37 +38,33 @@ async def get_payment_link(message: types.Message):
         await message.answer(f'Somethings went wrong: {e}')
 
 
-async def check_order_status(order: Order) -> Order:
+async def check_order_status(order: Order):
     order = await client.check_order_polling(order)
-
     if order.status_code == models.StatusCode.ok.value:
-        order = await payment_received(order)
-
+        await payment_received(order)
     elif order.status_code in (models.StatusCode.error.value,
                                models.StatusCode.cancel.value,
                                models.StatusCode.max_attempts):
-        order = await cancel_payment(order)
-
-    return order
+        await cancel_payment(order)
 
 
 # Действия при удачной оплате
-async def payment_received(order: Order):
-    logger.info(f"The payment {order.number} received")
+async def payment_received(order: Order) -> None:
+    order = await db.update_order(order)
+    logger.info(f"The payment {order.number} received. Status: {order.status_code}")
     # Сообщение для понимания, что платеж прошел успешно
-    # TODO: Добавить в модель account_id, пока здесь мой айдишник
-    await bot.send_message('542570177',
+    await bot.send_message(order.description,
                            f'The payment {order.number} was successful.'
                            f'\nThe amount: {order.amount}.')
 
 
 # Действия при неудачной оплате
-async def cancel_payment(order: Order):
+async def cancel_payment(order: Order) -> None:
     order = await client.cancel_payment(order)
+    await db.update_order(order)
     logger.info(f"The payment {order.number} canceled")
     # Сообщение для понимания, что платеж прошел с ошибкой
-    # TODO: Добавить в модель account_id, пока здесь мой айдишник
-    await bot.send_message('542570177',
+    await bot.send_message(order.description,
                            f'The payment {order.number} was made with an error.'
                            f'\nThe amount of {order.amount} has not been credited.'
                            f'\nStatus code: {order.status_code}')

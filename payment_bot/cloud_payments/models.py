@@ -14,7 +14,7 @@ class Model(object):
 # Модель заказа с заполнением из JSON
 class Order(Model):
     def __init__(self, id, number, amount, currency, email,
-                 description, require_confirmation, url, status_code):
+                 description, require_confirmation, url, status_code, created):
         super(Order, self).__init__()
         self.id = id
         self.number = number
@@ -25,6 +25,7 @@ class Order(Model):
         self.require_confirmation = require_confirmation
         self.url = url
         self.status_code = status_code
+        self.created = created
 
     @classmethod
     def from_dict(cls, order_dict):
@@ -36,7 +37,8 @@ class Order(Model):
                    order_dict['Description'],
                    order_dict['RequireConfirmation'],
                    order_dict['Url'],
-                   order_dict['StatusCode'])
+                   order_dict['StatusCode'],
+                   order_dict['CreatedDateIso'])
 
 
 # Модель заказа с заполнением из JSON

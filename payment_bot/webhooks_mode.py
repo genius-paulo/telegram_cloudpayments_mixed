@@ -2,21 +2,24 @@ from fastapi import FastAPI, Request
 from urllib.parse import parse_qs
 from time import sleep
 from asyncio import sleep as asleep
-
 from aiogram import types, Dispatcher, Bot
-
 from loguru import logger
-
 from payment_bot.config import settings
 from payment_bot.cloud_payments import cloud_payments, models
 from payment_bot.cloud_payments.models import Order
+from payment_bot.db_infra import db
 
-
+# Запускаем бота
 bot = Bot(token=settings.tg_token)
 dp = Dispatcher(bot)
+
+# Создаем клиента для CloudPayments
 client = cloud_payments.CloudPayments(settings.cp_p_id, settings.cp_api_pass)
 
+# Создаем таблицу
+db.create_tables(db.db, db.Orders)
 
+# Создаем сервер FastAPI
 app = FastAPI()
 logger.debug('Start webhook mode')
 
@@ -82,6 +85,7 @@ async def receive_webhook(request: Request):
 @dp.message_handler(commands=["start"])
 async def send_welcome(message: types.Message):
     await message.reply("Hi!\nThe bot is working.")
+    await message.reply(f"Available tables in db: {db.db.get_tables()}")
 
 
 @dp.message_handler(commands=["get_payment"])
@@ -89,11 +93,11 @@ async def get_payment_link(message: types.Message):
     try:
         # Сюда нужно передавать сумму из сообщения
         order = await client.create_order_link(10.0, 'USD', message.from_id)
+        # Создаем платеж в базе
+        order = await db.add_order(order)
+
         logger.debug(f"Order created: {order}")
         await message.answer(f'Your order link: {order.url}')
-
-        # Запускаем polling-проверку статуса платежа
-        await check_order_status(order)
     except Exception as e:
         await message.answer(f'Somethings went wrong: {e}')
 
@@ -126,18 +130,18 @@ async def check_order_status(order: Order) -> Order:
 # Действия при ручной проверке статуса платежа
 async def payment_is_waiting(order: Order):
     logger.info(f"The payment {order.number} is waiting")
+    order = await db.update_order(order)
     # Сообщение для понимания, что платеж прошел успешно
-    # TODO: Добавить в модель account_id, пока здесь мой айдишник
-    await bot.send_message('542570177',
+    await bot.send_message(order.description,
                            f'The payment {order.number} is waiting.')
 
 
 # Действия при удачной оплате
 async def payment_received(order: Order):
-    logger.info(f"The payment {order.number} received")
+    order = await db.update_order(order)
+    logger.info(f"The payment {order.number} received. Status: {order.status_code}")
     # Сообщение для понимания, что платеж прошел успешно
-    # TODO: Добавить в модель account_id, пока здесь мой айдишник
-    await bot.send_message('542570177',
+    await bot.send_message(order.description,
                            f'The payment {order.number} was successful.'
                            f'\nThe amount: {order.amount}.')
 
@@ -151,29 +155,25 @@ async def get_transaction_webhook(request_body: bytes, status_code: int):
     # Обновляем объект платежа
     transaction = models.Transaction.from_dict(params_dict)
     logger.debug(f"Transaction has been created from dict: {transaction}")
-    # TODO: здесь нужно будет достать объект из базы по Trnsaction.invoice_id,
-    #  пока создаю его вручную, чтобы логика отработала
-    order = Order.from_dict({'Id': 'INeD0eJb13zMnWKC', 'Number': 260, 'Amount': '10.0',
-                             'Currency': 'USD', 'Email': None,
-                             'Description': '542570177', 'RequireConfirmation': True,
-                             'Url': 'https://orders.cloudpayments.ru/d/INeD0eJb13zMnWKC',
-                             'StatusCode': 0})
+
+    order = await db.get_order_by_number(transaction.invoice_id)
     logger.debug(f"Order has been created from dict: {order}")
+
     new_order = client.update_order(transaction.status_code, order)
+    new_order = await db.update_order(new_order)
     logger.debug(f"Order was updated: {new_order}")
+
     return new_order
 
 
 # Действия при неудачной оплате
 async def cancel_payment(order: Order):
     order = await client.cancel_payment(order)
+    await db.update_order(order)
     logger.info(f"The payment {order.number} canceled")
     # Сообщение для понимания, что платеж прошел с ошибкой
-    # TODO: Добавить в модель account_id, пока здесь мой айдишник
-    await bot.send_message('542570177',
+    await bot.send_message(order.description,
                            f'The payment {order.number} was made with an error.'
                            f'\nThe amount of {order.amount} has not been credited.'
                            f'\nStatus code: {order.status_code}')
-    order.status_code = models.StatusCode.cancel.value
-    return order
 # ------------------------- #

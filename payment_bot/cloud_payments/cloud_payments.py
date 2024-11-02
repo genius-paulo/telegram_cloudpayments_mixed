@@ -94,21 +94,3 @@ class CloudPayments:
         order.status_code = status_code
         logger.info(f"Update order {order.number}. Status: {order.status_code}")
         return order
-
-
-# TODO: Почему оно запускается, даже когда имортируется?
-if __name__ == '__main__':
-    """
-    client = CloudPayments(settings.cp_p_id, settings.cp_api_pass)
-    order = asyncio.run(client.create_order_link(10,
-                                                 'USD',
-                                                 'Top up your account'))
-    logger.info(order)
-
-    checked_order = asyncio.run(client.check_order(order))
-    logger.debug(f"Check order for webhook: {checked_order}")
-    checked_order = asyncio.run(client.check_order_polling(order))
-    logger.debug(f"Check order for polling: {checked_order}")
-    logger.info(checked_order)
-    """
-    pass

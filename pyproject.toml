@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "telegram-cloudpayments-polling"
-version = "0.1.0"
+name = "telegram-cloudpayments-mixed"
+version = "0.0.0"
+package-mode = false
 description = ""
-authors = ["BuildTools <unconfigured@null.spigotmc.org>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
@@ -20,8 +20,7 @@ fastapi = "0.100.0"
 peewee = "^3.17"
 psycopg2 = "^2.9.10"
 postgres = "^4.0"
+aiohttp = "3.8.6"
+peewee-async = "0.8.1"
+aiopg = "^1.4.0"
 
-tsni yrteop
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"

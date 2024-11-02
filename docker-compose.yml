@@ -1,16 +1,8 @@
 version: '3'
 
 services:
-  payment_bot:
-    build: .
-    command: python /usr/src/app/payment_bot/polling_mode.py
-    ports:
-      - "8000:8000"
-    depends_on:
-      - pgdb
-
   pgdb:
-    image: postgres:13.3
+    image: postgres:15
     environment:
       POSTGRES_DB: "payment_db"
       POSTGRES_USER: "payment_user"
@@ -18,3 +10,13 @@ services:
     ports:
       - "5432:5432"
     container_name: pgdb
+
+  payment_bot:
+    build: .
+    command: python payment_bot/polling_mode.py
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - pgdb
