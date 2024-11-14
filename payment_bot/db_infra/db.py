@@ -1,8 +1,6 @@
-import peewee
 import peewee_async
 from peewee import *
 from loguru import logger
-import asyncio
 from payment_bot.cloud_payments.models import Order
 import datetime
 
@@ -25,6 +23,7 @@ class BaseModel(Model):
     url = TextField(column_name='url', null=False)
     status_code = IntegerField(column_name='status_code', null=True)
     created = DateTimeField(default=datetime.datetime.now)
+    receipt_url = TextField(column_name='receipt_url', null=True)
 
     class Meta:
         database = db
@@ -80,7 +79,9 @@ async def add_order(order: Order):
 
 # Функция для обновления объекта платежа в базе
 async def update_order(order: Order):
-    result = await _get_conn().execute(Orders.update(status_code=order.status_code).where(Orders.number == order.number))
+    result = await _get_conn().execute(Orders.update(status_code=order.status_code,
+                                                     receipt_url=order.receipt_url
+                                                     ).where(Orders.number == order.number))
     logger.debug(f"Update order. Result: {result}")
     updated_db_object = await get_order_by_number(order.number)
     logger.debug(f'Updated db object status code: {updated_db_object.status_code}')
@@ -93,7 +94,3 @@ async def delete_order(order: Order) -> None:
     logger.debug(f"Delete order. Result: {result}")
     updated_db_object = await get_order_by_number(order.number)
     logger.debug(f'Db object deleted: {updated_db_object.status_code}')
-
-
-# Команда запуска докера для тестов
-# docker run --name pg-container -e POSTGRES_DB=payment_db -e POSTGRES_USER=payment_user -e POSTGRES_PASSWORD=payment_password -p 5432:5432 -d postgres:15

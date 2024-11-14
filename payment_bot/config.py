@@ -18,6 +18,11 @@ class Settings(BaseModel):
     cp_p_id: str = os.getenv('CP_PUBLIC_ID')
     cp_api_pass: str = os.getenv('API_PASSWORD')
 
+    # Креды организации
+    inn: str = os.getenv('INN')
+    vat: str = os.getenv('VAT')
+    tax_system: str = os.getenv('TAX_SYS')
+
     # Креды для бд
     db_name: str = os.getenv('DB_NAME')
     db_user: str = os.getenv('DB_USER')
@@ -31,7 +36,7 @@ class Settings(BaseModel):
 
     # Креды для вебхуков
     webhook_path: str = f"/bot/{tg_token}"
-    ngrok_url: str | None = None
+    ngrok_url: str | None = 'https://example.com/your-bot-endpoint'
 
 
 settings = Settings()
